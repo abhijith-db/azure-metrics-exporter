@@ -46,6 +46,10 @@ type (
 			Bind         string        `long:"server.bind"              env:"SERVER_BIND"           description:"Server address"        default:":8080"`
 			ReadTimeout  time.Duration `long:"server.timeout.read"      env:"SERVER_TIMEOUT_READ"   description:"Server read timeout"   default:"5s"`
 			WriteTimeout time.Duration `long:"server.timeout.write"     env:"SERVER_TIMEOUT_WRITE"  description:"Server write timeout"  default:"10s"`
+
+			// pprof options
+			PprofEnabled bool   `long:"server.pprof.enabled"     env:"SERVER_PPROF_ENABLED"  description:"Enable pprof endpoints"`
+			PprofBind    string `long:"server.pprof.bind"        env:"SERVER_PPROF_BIND"     description:"Pprof server address (if different from main server)"`
 		}
 	}
 )

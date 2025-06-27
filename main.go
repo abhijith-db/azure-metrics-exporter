@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"time"
@@ -64,6 +65,11 @@ func main() {
 	initAzureConnection()
 	initMetricCollector()
 
+	// Initialize pprof if enabled
+	if Opts.Server.PprofEnabled {
+		go startPprofServer()
+	}
+
 	logger.Infof("starting http server on %s", Opts.Server.Bind)
 	startHttpServer()
 }
@@ -113,6 +119,16 @@ func initAzureConnection() {
 // start and handle prometheus handler
 func startHttpServer() {
 	mux := http.NewServeMux()
+
+	// Add pprof endpoints if enabled and using same bind address
+	if Opts.Server.PprofEnabled && (Opts.Server.PprofBind == "" || Opts.Server.PprofBind == Opts.Server.Bind) {
+		logger.Info("adding pprof endpoints to main server at /debug/pprof/")
+		// Import of _ "net/http/pprof" automatically registers handlers with http.DefaultServeMux
+		// We need to manually add them to our custom mux
+		mux.HandleFunc("/debug/pprof/", func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})
+	}
 
 	// healthz
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -204,4 +220,39 @@ func initMetricCollector() {
 		},
 	)
 	prometheus.MustRegister(prometheusMetricRequests)
+}
+
+// startPprofServer starts the pprof server
+func startPprofServer() {
+	var pprofBind string
+	if Opts.Server.PprofBind != "" {
+		pprofBind = Opts.Server.PprofBind
+	} else {
+		pprofBind = Opts.Server.Bind
+	}
+
+	// If pprof is using the same bind address as the main server,
+	// the pprof endpoints will be added to the main server instead
+	if pprofBind == Opts.Server.Bind {
+		logger.Infof("pprof endpoints will be available on main server at %s", pprofBind)
+		return
+	}
+
+	logger.Infof("starting pprof server on %s", pprofBind)
+
+	pprofMux := http.NewServeMux()
+	// The pprof endpoints are automatically registered when we import _ "net/http/pprof"
+	// They will be available at /debug/pprof/
+	pprofMux.Handle("/debug/pprof/", http.DefaultServeMux)
+
+	pprofServer := &http.Server{
+		Addr:         pprofBind,
+		Handler:      pprofMux,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Errorf("pprof server failed: %v", err)
+	}
 }
