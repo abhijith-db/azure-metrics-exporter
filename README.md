@@ -13,6 +13,7 @@ Configuration (except Azure connection) of this exporter is made entirely in Pro
 TOC:
 * [Features](#Features)
 * [Configuration](#configuration)
+* [Profiling with pprof](#profiling-with-pprof)
 * [Metrics](#metrics)
     + [Azuretracing metrics](#azuretracing-metrics)
     + [Metric name and help template system](#metric-name-and-help-template-system)
@@ -69,6 +70,7 @@ Application Options:
       --log.debug                          debug mode [$LOG_DEBUG]
       --log.devel                          development mode [$LOG_DEVEL]
       --log.json                           Switch log output to json format [$LOG_JSON]
+      --log.level=                         Log level (debug, info, warn, error, dpanic, panic, fatal) (default: info) [$LOG_LEVEL]
       --azure-environment=                 Azure environment name (default: AZUREPUBLICCLOUD) [$AZURE_ENVIRONMENT]
       --azure-ad-resource-url=             Specifies the AAD resource ID to use. If not set, it defaults to ResourceManagerEndpoint for operations with Azure Resource Manager
                                            [$AZURE_AD_RESOURCE]
@@ -84,6 +86,8 @@ Application Options:
       --server.bind=                       Server address (default: :8080) [$SERVER_BIND]
       --server.timeout.read=               Server read timeout (default: 5s) [$SERVER_TIMEOUT_READ]
       --server.timeout.write=              Server write timeout (default: 10s) [$SERVER_TIMEOUT_WRITE]
+      --server.pprof.enabled               Enable pprof endpoints [$SERVER_PPROF_ENABLED]
+      --server.pprof.bind=                 Pprof server address (if different from main server) [$SERVER_PPROF_BIND]
 
 Help Options:
   -h, --help                               Show this help message
@@ -99,6 +103,67 @@ Enable the webui (`--development.webui`) to get a basic web frontend to query th
 the right settings for your configuration.
 
 webui is available under url `/query`
+
+## Profiling with pprof
+
+For performance analysis and debugging, pprof endpoints can be enabled in the exporter.
+
+### Enable pprof
+
+To enable pprof endpoints, use the `--server.pprof.enabled` flag:
+
+```bash
+./azure-metrics-exporter --server.pprof.enabled
+```
+
+or set the environment variable:
+
+```bash
+export SERVER_PPROF_ENABLED=true
+./azure-metrics-exporter
+```
+
+### pprof endpoints
+
+When enabled, pprof endpoints will be available at:
+- `/debug/pprof/` - pprof index page
+- `/debug/pprof/profile` - CPU profiling
+- `/debug/pprof/heap` - Memory heap profiling
+- `/debug/pprof/goroutine` - Goroutine profiling
+- `/debug/pprof/block` - Block profiling
+- `/debug/pprof/mutex` - Mutex profiling
+
+### Separate pprof server
+
+By default, pprof endpoints are served on the same port as the main server. To run pprof on a separate port, use:
+
+```bash
+./azure-metrics-exporter --server.pprof.enabled --server.pprof.bind=":6060"
+```
+
+or with environment variables:
+
+```bash
+export SERVER_PPROF_ENABLED=true
+export SERVER_PPROF_BIND=":6060"
+./azure-metrics-exporter
+```
+
+### Usage examples
+
+```bash
+# CPU profiling for 30 seconds
+go tool pprof http://localhost:8080/debug/pprof/profile?seconds=30
+
+# Memory profiling
+go tool pprof http://localhost:8080/debug/pprof/heap
+
+# Check goroutines
+go tool pprof http://localhost:8080/debug/pprof/goroutine
+
+# If using separate pprof server on port 6060
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+```
 
 ## Metrics
 
@@ -296,6 +361,7 @@ azurerm_ratelimit{scope="subscription",subscriptionID="...",type="read"} 11999
 | `/probe/metrics/list`          | Probe metrics for list of resources (sone query per resource; see `azurerm_resource_metric`)                                       |
 | `/probe/metrics/scrape`        | Probe metrics for list of resources and config on resource by tag name (one query per resource; see `azurerm_resource_metric`)     |
 | `/probe/metrics/resourcegraph` | Probe metrics for list of resources based on a kusto query and the resource graph API (one query per resource)                     |
+| `/debug/pprof/*`               | pprof profiling endpoints (when enabled with `--server.pprof.enabled`)                                                             |
 
 ### /probe/metrics parameters
 
