@@ -21,7 +21,27 @@ func initLogger() *zap.SugaredLogger {
 	config.Encoding = "console"
 	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	// debug level
+	// Set log level based on configuration
+	switch Opts.Logger.Level {
+	case "debug":
+		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	case "info":
+		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	case "warn":
+		config.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
+	case "error":
+		config.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
+	case "dpanic":
+		config.Level = zap.NewAtomicLevelAt(zapcore.DPanicLevel)
+	case "panic":
+		config.Level = zap.NewAtomicLevelAt(zapcore.PanicLevel)
+	case "fatal":
+		config.Level = zap.NewAtomicLevelAt(zapcore.FatalLevel)
+	default:
+		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	}
+
+	// debug level flag overrides log.level
 	if Opts.Logger.Debug {
 		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	}
