@@ -109,5 +109,5 @@ func probeMetricsResourceHandler(w http.ResponseWriter, r *http.Request) {
 		zap.String("method", r.Method),
 		zap.Int("status", http.StatusOK),
 		zap.String("latency", latency.String()),
-	).Info("Request handled for /probe/metrics/resource")
+	).Debug("Request handled for /probe/metrics/resource")
 }

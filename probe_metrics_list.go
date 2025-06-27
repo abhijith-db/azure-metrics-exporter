@@ -98,5 +98,5 @@ func probeMetricsListHandler(w http.ResponseWriter, r *http.Request) {
 		zap.String("method", r.Method),
 		zap.Int("status", http.StatusOK),
 		zap.String("latency", latency.String()),
-	).Info("Request handled for /probe/metrics/list")
+	).Debug("Request handled for /probe/metrics/list")
 }
